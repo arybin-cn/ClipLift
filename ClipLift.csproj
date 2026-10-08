@@ -10,6 +10,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>ClipLift.ico</ApplicationIcon>
     <Version>1.0.0</Version>
     <Product>ClipLift</Product>
     <Description>Upload clipboard images to an SSH server from the tray</Description>
@@ -20,6 +21,9 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Drawing" />
+    <!-- Build-time helper with its own project; see tools/IconGen -->
+    <Compile Remove="tools/**" />
+    <None Remove="tools/**" />
   </ItemGroup>
 
 </Project>
