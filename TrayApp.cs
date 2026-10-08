@@ -26,6 +26,10 @@ namespace ClipLift
         private TrayPopup _popup;
         private Profile _uploading;
 
+        /// <summary>Last upload per profile name: clipboard fingerprint and the pasted text it produced.</summary>
+        private readonly Dictionary<string, KeyValuePair<string, string>> _recent =
+            new Dictionary<string, KeyValuePair<string, string>>(StringComparer.Ordinal);
+
         public TrayApp()
         {
             if (!(SynchronizationContext.Current is WindowsFormsSynchronizationContext))
@@ -116,9 +120,25 @@ namespace ClipLift
             if (payload == null)
                 return; // nothing to upload: stay silent
 
-            SetUploading(profile);
             using (payload)
             {
+                if (_recent.TryGetValue(profile.Name, out KeyValuePair<string, string> recent) &&
+                    recent.Key == payload.Fingerprint)
+                {
+                    // Same image as the last upload to this profile: reuse its remote path.
+                    try
+                    {
+                        payload.PutBack(_settings.TrailingSpace ? recent.Value + " " : recent.Value, _settings.KeepImage);
+                        ShowPopup("Already uploaded to " + profile.Name, recent.Value, false);
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowPopup("Cannot write clipboard", ex.Message, true);
+                    }
+                    return;
+                }
+
+                SetUploading(profile);
                 try
                 {
                     int timeout = _settings.TimeoutSeconds;
@@ -126,6 +146,7 @@ namespace ClipLift
 
                     string text = string.Join(" ", names.Select(n => QuoteIfNeeded(profile.PastePath(n))));
                     payload.PutBack(_settings.TrailingSpace ? text + " " : text, _settings.KeepImage);
+                    _recent[profile.Name] = new KeyValuePair<string, string>(payload.Fingerprint, text);
 
                     _settings.LastProfile = profile.Name;
                     TrySave();
@@ -157,6 +178,7 @@ namespace ClipLift
             {
                 saved.LastProfile = _settings.LastProfile;
                 _settings = saved;
+                _recent.Clear(); // directories or prefixes may have changed
                 TrySave();
                 UpdateTray();
             };

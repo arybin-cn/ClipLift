@@ -20,6 +20,7 @@ It is made for terminal tools running on a remote machine, such as Claude Code o
 - Copied image files from Explorer (png, jpg, jpeg, gif, webp, bmp) are uploaded as well.
 - Quiet feedback: a small balloon-style popup above the tray. It never takes focus and does not go to the notification center. The tray icon is **green** when idle and **blue** while uploading.
 - Nothing happens when the clipboard has no image.
+- Clicking again with the same image does not upload it twice; the path from the previous upload to that profile is reused.
 
 ### Requirements
 
@@ -113,6 +114,7 @@ ClipLift 是一个 Windows 托盘小工具：把剪贴板里的图片上传到 S
 - 在资源管理器里复制的图片文件（png、jpg、jpeg、gif、webp、bmp）也可以上传。
 - 提示方式很安静：托盘上方弹出一个经典气泡样式的小窗，不会抢焦点，也不会进通知中心。托盘图标平时是**绿色**，上传中是**蓝色**。
 - 剪贴板里没有图片时，点击不会有任何反应。
+- 图片没变时再次点击不会重复上传，而是直接复用上次上传到该配置时得到的路径。
 
 ### 运行要求
 
