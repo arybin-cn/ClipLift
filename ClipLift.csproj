@@ -11,7 +11,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>ClipLift.ico</ApplicationIcon>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>ClipLift</Product>
     <Description>Upload clipboard images to an SSH server from the tray</Description>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

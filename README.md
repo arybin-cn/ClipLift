@@ -9,9 +9,9 @@ Handy for tools like Claude Code running on a remote machine: you can't paste an
 ## Usage
 
 - Left-click the tray icon to upload with the last used profile.
-- Right-click to pick a profile, or to open Settings.
+- Right-click to pick a profile, turn Auto Mode on or off, or open Settings.
 
-With auto upload turned on in Settings, every image that lands in the clipboard (a screenshot, a picture copied from a browser) is uploaded to the last used profile right away, no click needed. The tray icon turns purple while this is on. Image files copied in Explorer still need a click.
+With Auto Mode on (toggle it from the right-click menu or in Settings), every image that lands in the clipboard (a screenshot, a picture copied from a browser) is uploaded to the last used profile right away, no click needed. The tray icon turns purple while this is on. Image files copied in Explorer still need a click.
 
 You can set up several profiles (different hosts or directories). The original image stays in the clipboard alongside the path, so pasting into a non-terminal app still gives you the image. Image files copied in Explorer work too; they are uploaded under a `CLIPLIFT_<timestamp>` name like screenshots.
 

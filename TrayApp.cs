@@ -11,7 +11,7 @@ namespace ClipLift
 {
     /// <summary>
     /// Left-click uploads to the last used profile; right-click opens a menu listing all profiles
-    /// (click one to upload there) followed by "Settings..." and "Exit". With auto upload on, every image put
+    /// (click one to upload there) followed by the Auto Mode toggle, "Settings..." and "Exit". With Auto Mode on, every image put
     /// into the clipboard is also uploaded to the default profile.
     /// </summary>
     internal sealed class TrayApp : ApplicationContext
@@ -143,7 +143,7 @@ namespace ClipLift
         private void WarnIfCannotWatch()
         {
             if (_settings.AutoUpload && _watcherError != null)
-                ShowPopup("Cannot watch the clipboard", "Auto upload is unavailable: " + _watcherError, true);
+                ShowPopup("Cannot watch the clipboard", "Auto Mode is unavailable: " + _watcherError, true);
         }
 
         private void RebuildMenu()
@@ -169,8 +169,22 @@ namespace ClipLift
             }
 
             _menu.MenuItems.Add("-");
+            _menu.MenuItems.Add(new MenuItem("&Auto Mode", (s, a) => ToggleAutoUpload())
+            {
+                Checked = _settings.AutoUpload,
+            });
             _menu.MenuItems.Add(new MenuItem("&Settings...", (s, a) => ShowSettings()));
             _menu.MenuItems.Add(new MenuItem("E&xit", (s, a) => ExitApp()));
+        }
+
+        private void ToggleAutoUpload()
+        {
+            _settings.AutoUpload = !_settings.AutoUpload;
+            _autoTimer.Stop();
+            _autoPending = false;
+            TrySave();
+            UpdateTray();
+            WarnIfCannotWatch();
         }
 
         private async Task UploadAsync(Profile profile)
@@ -315,7 +329,7 @@ namespace ClipLift
             if (Busy)
                 text = "ClipLift - uploading to " + _uploading.Name + "...";
             else if (DefaultProfile is Profile p)
-                text = (auto ? "ClipLift - auto upload to " : "ClipLift - click to upload to ") + p.Name;
+                text = (auto ? "ClipLift - Auto Mode, uploads to " : "ClipLift - click to upload to ") + p.Name;
             else
                 text = "ClipLift - right-click for settings";
             _tray.Text = Truncate(text, 63);

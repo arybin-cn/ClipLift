@@ -42,7 +42,7 @@ namespace ClipLift
         private readonly CheckBox _trailingSpace = new CheckBox { Text = "Add a trailing space after the pasted path" };
         private readonly CheckBox _autoUpload = new CheckBox
         {
-            Text = "Upload copied images (e.g. screenshots) automatically to the last used profile",
+            Text = "Auto Mode: upload every copied image (e.g. a screenshot) to the last used profile right away",
         };
         private readonly CheckBox _autostart = new CheckBox { Text = "Start ClipLift with Windows" };
 
