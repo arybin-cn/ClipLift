@@ -40,6 +40,10 @@ namespace ClipLift
             Text = "Keep the original image in the clipboard (the path is added as text)",
         };
         private readonly CheckBox _trailingSpace = new CheckBox { Text = "Add a trailing space after the pasted path" };
+        private readonly CheckBox _autoUpload = new CheckBox
+        {
+            Text = "Upload copied images (e.g. screenshots) automatically to the last used profile",
+        };
         private readonly CheckBox _autostart = new CheckBox { Text = "Start ClipLift with Windows" };
 
         private readonly Button _save = new Button { Text = "Save" };
@@ -62,6 +66,7 @@ namespace ClipLift
 
             _keepImage.Checked = settings.KeepImage;
             _trailingSpace.Checked = settings.TrailingSpace;
+            _autoUpload.Checked = settings.AutoUpload;
             try { _autostart.Checked = Autostart.Enabled; } catch (Exception) { _autostart.Enabled = false; }
 
             foreach (Profile p in settings.Profiles)
@@ -143,9 +148,9 @@ namespace ClipLift
             top.Controls.Add(_editor, 1, 0);
 
             // Global options
-            foreach (CheckBox c in new[] { _keepImage, _trailingSpace, _autostart })
+            foreach (CheckBox c in new[] { _autoUpload, _keepImage, _trailingSpace, _autostart })
                 c.AutoSize = true;
-            var optionsBody = Flow(FlowDirection.TopDown, _keepImage, _trailingSpace, _autostart);
+            var optionsBody = Flow(FlowDirection.TopDown, _autoUpload, _keepImage, _trailingSpace, _autostart);
             optionsBody.Dock = DockStyle.Fill;
             var options = new GroupBox
             {
@@ -208,7 +213,7 @@ namespace ClipLift
 
                 options.Margin = new Padding(0, Px(10), 0, 0);
                 optionsBody.Padding = new Padding(Px(6));
-                foreach (CheckBox c in new[] { _keepImage, _trailingSpace, _autostart })
+                foreach (CheckBox c in new[] { _autoUpload, _keepImage, _trailingSpace, _autostart })
                     c.Margin = new Padding(0, Px(2), 0, Px(2));
 
                 bottom.Margin = new Padding(0, Px(12), 0, 0);
@@ -454,6 +459,7 @@ namespace ClipLift
             }
             _settings.KeepImage = _keepImage.Checked;
             _settings.TrailingSpace = _trailingSpace.Checked;
+            _settings.AutoUpload = _autoUpload.Checked;
 
             if (_autostart.Enabled)
             {

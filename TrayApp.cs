@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -10,21 +11,40 @@ namespace ClipLift
 {
     /// <summary>
     /// Left-click uploads to the last used profile; right-click opens a menu listing all profiles
-    /// (click one to upload there) followed by "Settings..." and "Exit".
+    /// (click one to upload there) followed by "Settings..." and "Exit". With auto upload on, every image put
+    /// into the clipboard is also uploaded to the default profile.
     /// </summary>
     internal sealed class TrayApp : ApplicationContext
     {
         private const int SuccessPopupMs = 3000;
         private const int ErrorPopupMs = 5000;
 
+        // Auto upload pops up after every copied image, so keep those popups out of the way sooner.
+        private const int AutoSuccessPopupMs = 1500;
+        private const int AutoErrorPopupMs = 3000;
+
+        /// <summary>Screenshot tools often update the clipboard several times in a row; wait for it to settle.</summary>
+        private const int AutoUploadDelayMs = 300;
+
         private readonly NotifyIcon _tray;
         private readonly ContextMenu _menu = new ContextMenu();
         private readonly Icon _idleIcon;
         private readonly Icon _busyIcon;
+        private readonly Icon _idleAutoIcon;
+        private readonly ClipboardWatcher _watcher;
+        private readonly System.Windows.Forms.Timer _autoTimer = new System.Windows.Forms.Timer { Interval = AutoUploadDelayMs };
         private Settings _settings;
         private SettingsForm _settingsForm;
         private TrayPopup _popup;
         private Profile _uploading;
+
+        /// <summary>Clipboard sequence number right after ClipLift last wrote to it.</summary>
+        private uint _ownClipboard;
+
+        /// <summary>The clipboard changed while an upload was running; check it again when that one ends.</summary>
+        private bool _autoPending;
+
+        private string _watcherError;
 
         /// <summary>Last upload per profile name: clipboard fingerprint and the pasted text it produced.</summary>
         private readonly Dictionary<string, KeyValuePair<string, string>> _recent =
@@ -36,15 +56,29 @@ namespace ClipLift
                 SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
 
             _settings = Settings.Load();
-            _idleIcon = IconFactory.CreateIdle();
+            _idleIcon = IconFactory.CreateIdle(false);
             _busyIcon = IconFactory.CreateBusy();
+            _idleAutoIcon = IconFactory.CreateIdle(true);
 
             // Native menu, shown by the system on right-click; rebuilt each time from the current settings.
             _menu.Popup += (s, e) => RebuildMenu();
 
             _tray = new NotifyIcon { Icon = _idleIcon, ContextMenu = _menu, Visible = true };
             _tray.MouseClick += OnTrayClick;
+
+            try
+            {
+                _watcher = new ClipboardWatcher();
+                _watcher.Changed += (s, e) => OnClipboardChanged();
+            }
+            catch (Exception ex)
+            {
+                // Manual uploads still work; auto upload just never fires.
+                _watcherError = ex.Message;
+            }
+            _autoTimer.Tick += (s, e) => OnClipboardSettled();
             UpdateTray();
+            SynchronizationContext.Current.Post(_ => WarnIfCannotWatch(), null);
 
             if (!Settings.Exists)
                 SynchronizationContext.Current.Post(_ => ShowSettings(), null);
@@ -73,6 +107,43 @@ namespace ClipLift
                 ShowSettings();
             else
                 _ = UploadAsync(profile);
+        }
+
+        private void OnClipboardChanged()
+        {
+            if (!_settings.AutoUpload)
+                return;
+            _autoTimer.Stop();
+            _autoTimer.Start();
+        }
+
+        private void OnClipboardSettled()
+        {
+            _autoTimer.Stop();
+            if (!_settings.AutoUpload || ClipboardWatcher.SequenceNumber == _ownClipboard)
+                return;
+            if (Busy)
+            {
+                _autoPending = true;
+                return;
+            }
+
+            // Only bitmaps (screenshots, copied images); image files copied in Explorer need a click.
+            bool hasImage;
+            try { hasImage = Clipboard.ContainsImage(); }
+            catch (ExternalException) { return; } // clipboard held by another app; the next change retries
+            if (!hasImage)
+                return;
+
+            Profile profile = DefaultProfile;
+            if (profile != null)
+                _ = UploadAsync(profile);
+        }
+
+        private void WarnIfCannotWatch()
+        {
+            if (_settings.AutoUpload && _watcherError != null)
+                ShowPopup("Cannot watch the clipboard", "Auto upload is unavailable: " + _watcherError, true);
         }
 
         private void RebuildMenu()
@@ -123,6 +194,9 @@ namespace ClipLift
             if (payload == null)
                 return; // nothing to upload: stay silent
 
+            // Read after capturing: apps that render clipboard data on demand may write it while it is read.
+            uint captured = ClipboardWatcher.SequenceNumber;
+
             using (payload)
             {
                 if (_recent.TryGetValue(profile.Name, out KeyValuePair<string, string> recent) &&
@@ -131,7 +205,7 @@ namespace ClipLift
                     // Same image as the last upload to this profile: reuse its remote path.
                     try
                     {
-                        payload.PutBack(_settings.TrailingSpace ? recent.Value + " " : recent.Value, _settings.KeepImage);
+                        PutBack(payload, recent.Value, captured);
                         ShowPopup("Already uploaded to " + profile.Name, recent.Value, false, screen);
                     }
                     catch (Exception ex)
@@ -148,12 +222,13 @@ namespace ClipLift
                     List<string> names = await Task.Run(() => Uploader.Upload(profile, payload.Files, timeout));
 
                     string text = string.Join(" ", names.Select(n => QuoteIfNeeded(profile.PastePath(n))));
-                    payload.PutBack(_settings.TrailingSpace ? text + " " : text, _settings.KeepImage);
+                    bool replaced = PutBack(payload, text, captured);
                     _recent[profile.Name] = new KeyValuePair<string, string>(payload.Fingerprint, text);
 
                     _settings.LastProfile = profile.Name;
                     TrySave(screen);
-                    ShowPopup("Uploaded to " + profile.Name, text, false, screen);
+                    ShowPopup("Uploaded to " + profile.Name + (replaced ? "" : " (clipboard changed, path not copied)"),
+                        text, false, screen);
                 }
                 catch (Exception ex)
                 {
@@ -163,6 +238,11 @@ namespace ClipLift
                 finally
                 {
                     SetUploading(null);
+                    if (_autoPending)
+                    {
+                        _autoPending = false;
+                        _autoTimer.Start();
+                    }
                 }
 
                 // Runs after the success popup so it does not delay it; the newest upload is never pruned.
@@ -179,6 +259,19 @@ namespace ClipLift
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Puts the pasted text into the clipboard, unless the clipboard changed since it was captured (e.g. a new
+        /// screenshot taken during the upload), which must not be overwritten.
+        /// </summary>
+        private bool PutBack(ClipboardPayload payload, string text, uint captured)
+        {
+            if (ClipboardWatcher.SequenceNumber != captured)
+                return false;
+            payload.PutBack(_settings.TrailingSpace ? text + " " : text, _settings.KeepImage);
+            _ownClipboard = ClipboardWatcher.SequenceNumber;
+            return true;
         }
 
         private void ShowSettings()
@@ -199,6 +292,7 @@ namespace ClipLift
                 _recent.Clear(); // directories or prefixes may have changed
                 TrySave();
                 UpdateTray();
+                WarnIfCannotWatch();
             };
             _settingsForm.ExitRequested += ExitApp;
             _settingsForm.FormClosed += (s, a) => _settingsForm = null;
@@ -214,13 +308,14 @@ namespace ClipLift
 
         private void UpdateTray()
         {
-            _tray.Icon = Busy ? _busyIcon : _idleIcon;
+            bool auto = _settings.AutoUpload;
+            _tray.Icon = Busy ? _busyIcon : auto ? _idleAutoIcon : _idleIcon;
 
             string text;
             if (Busy)
                 text = "ClipLift - uploading to " + _uploading.Name + "...";
             else if (DefaultProfile is Profile p)
-                text = "ClipLift - click to upload to " + p.Name;
+                text = (auto ? "ClipLift - auto upload to " : "ClipLift - click to upload to ") + p.Name;
             else
                 text = "ClipLift - right-click for settings";
             _tray.Text = Truncate(text, 63);
@@ -230,7 +325,9 @@ namespace ClipLift
         {
             _popup?.Close();
             var popup = new TrayPopup(Truncate(title, 100), Truncate(text ?? "", 400), isError,
-                isError ? ErrorPopupMs : SuccessPopupMs);
+                _settings.AutoUpload
+                    ? (isError ? AutoErrorPopupMs : AutoSuccessPopupMs)
+                    : (isError ? ErrorPopupMs : SuccessPopupMs));
             popup.FormClosed += (s, e) =>
             {
                 if (ReferenceEquals(_popup, popup))
@@ -271,8 +368,11 @@ namespace ClipLift
             {
                 _tray.Dispose();
                 _menu.Dispose();
+                _watcher?.Dispose();
+                _autoTimer.Dispose();
                 _idleIcon.Dispose();
                 _busyIcon.Dispose();
+                _idleAutoIcon.Dispose();
             }
             base.Dispose(disposing);
         }

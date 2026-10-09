@@ -57,6 +57,9 @@ namespace ClipLift
 
         public bool TrailingSpace { get; set; } = true;
 
+        /// <summary>Upload every image (bitmap) put into the clipboard to the default profile.</summary>
+        public bool AutoUpload { get; set; }
+
         public int TimeoutSeconds { get; set; } = 10;
 
         [XmlIgnore]

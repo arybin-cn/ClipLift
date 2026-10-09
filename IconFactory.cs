@@ -9,17 +9,18 @@ namespace ClipLift
 {
     /// <summary>
     /// Draws the tray icons at the system small-icon size: a white up arrow on a circle that fills the
-    /// whole icon. Green while idle, blue while uploading.
+    /// whole icon. Green while idle (purple in auto upload mode), blue while uploading.
     /// </summary>
     internal static class IconFactory
     {
         private static readonly Color IdleColor = Color.FromArgb(0x16, 0xA3, 0x4A);
+        private static readonly Color AutoColor = Color.FromArgb(0x93, 0x33, 0xEA);
         private static readonly Color BusyColor = Color.FromArgb(0x25, 0x63, 0xEB);
 
         [DllImport("user32.dll")]
         private static extern bool DestroyIcon(IntPtr handle);
 
-        public static Icon CreateIdle() => Draw(IdleColor);
+        public static Icon CreateIdle(bool auto) => Draw(auto ? AutoColor : IdleColor);
 
         public static Icon CreateBusy() => Draw(BusyColor);
 
