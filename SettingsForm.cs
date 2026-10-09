@@ -82,7 +82,7 @@ namespace ClipLift
         {
             SuspendLayout();
 
-            Text = "ClipLift Settings";
+            Text = "ClipLift Settings - v" + Program.Version;
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             FormBorderStyle = FormBorderStyle.FixedDialog;

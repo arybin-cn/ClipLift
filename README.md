@@ -21,7 +21,7 @@ You can set up several profiles (different hosts or directories). The original i
 
 ## Setup
 
-Put `ClipLift.exe` and `ClipLift.exe.config` in a folder and run it. The settings window opens on first launch.
+Download the zip from [Releases](https://github.com/arybin-cn/ClipLift/releases), extract it anywhere and run `ClipLift.exe`. The settings window opens on first launch.
 
 | Field | |
 |---|---|

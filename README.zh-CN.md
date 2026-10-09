@@ -21,7 +21,7 @@ Windows 托盘小工具：把剪贴板里的图片通过 SSH 传到服务器，�
 
 ## 配置
 
-把 `ClipLift.exe` 和 `ClipLift.exe.config` 放到同一个目录下运行即可，首次启动会打开设置窗口。
+从 [Releases](https://github.com/arybin-cn/ClipLift/releases) 下载 zip，解压到任意目录，运行 `ClipLift.exe` 即可，首次启动会打开设置窗口。
 
 | 字段 | |
 |---|---|

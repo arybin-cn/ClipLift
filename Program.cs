@@ -6,6 +6,9 @@ namespace ClipLift
 {
     internal static class Program
     {
+        /// <summary>The product version (from &lt;Version&gt; in the project), without build metadata.</summary>
+        public static string Version => Application.ProductVersion.Split('+')[0];
+
         [STAThread]
         private static void Main()
         {
