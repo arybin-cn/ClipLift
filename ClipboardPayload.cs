@@ -20,7 +20,7 @@ namespace ClipLift
 
         private Image _image;
         private StringCollection _fileDrop;
-        private string _tempFile;
+        private IReadOnlyList<string> _tempFiles;
 
         /// <summary>Local files to upload.</summary>
         public IReadOnlyList<string> Files { get; private set; }
@@ -44,15 +44,12 @@ namespace ClipLift
                 if (image == null)
                     return null;
 
-                string dir = Path.Combine(Path.GetTempPath(), "ClipLift");
-                Directory.CreateDirectory(dir);
-                string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
-                string file = Path.Combine(dir, "shot_" + stamp + ".png");
+                string file = TempPath(NewBaseName() + ".png");
                 image.Save(file, ImageFormat.Png);
 
                 return new ClipboardPayload
                 {
-                    _image = image, _tempFile = file, Files = new[] { file }, Fingerprint = HashPixels(image),
+                    _image = image, _tempFiles = new[] { file }, Files = new[] { file }, Fingerprint = HashPixels(image),
                 };
             }
 
@@ -61,10 +58,47 @@ namespace ClipLift
                 StringCollection drop = Clipboard.GetFileDropList();
                 string[] images = drop.Cast<string>().Where(IsImageFile).ToArray();
                 if (images.Length > 0)
-                    return new ClipboardPayload { _fileDrop = drop, Files = images, Fingerprint = HashFiles(images) };
+                {
+                    // Upload copies under ClipLift's own names, so old uploads can be recognized and pruned.
+                    string baseName = NewBaseName();
+                    var copies = new List<string>();
+                    var payload = new ClipboardPayload
+                    {
+                        _fileDrop = drop, _tempFiles = copies, Files = copies, Fingerprint = HashFiles(images),
+                    };
+                    try
+                    {
+                        for (int i = 0; i < images.Length; i++)
+                        {
+                            string suffix = images.Length > 1 ? "_" + (i + 1).ToString(CultureInfo.InvariantCulture) : "";
+                            string copy = TempPath(baseName + suffix + Path.GetExtension(images[i]).ToLowerInvariant());
+                            File.Copy(images[i], copy, true);
+                            copies.Add(copy);
+                        }
+                    }
+                    catch
+                    {
+                        payload.Dispose();
+                        throw;
+                    }
+                    return payload;
+                }
             }
 
             return null;
+        }
+
+        /// <summary>Remote file names start with this prefix; only such files are pruned.</summary>
+        public const string FilePrefix = "CLIPLIFT_";
+
+        private static string NewBaseName() =>
+            FilePrefix + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
+
+        private static string TempPath(string fileName)
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "ClipLift");
+            Directory.CreateDirectory(dir);
+            return Path.Combine(dir, fileName);
         }
 
         /// <summary>Puts the pasted path into the clipboard, optionally next to the original content.</summary>
@@ -85,9 +119,9 @@ namespace ClipLift
         public void Dispose()
         {
             _image?.Dispose();
-            if (_tempFile != null)
+            foreach (string file in _tempFiles ?? Enumerable.Empty<string>())
             {
-                try { File.Delete(_tempFile); }
+                try { File.Delete(file); }
                 catch (IOException) { }
                 catch (UnauthorizedAccessException) { }
             }

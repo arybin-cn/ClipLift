@@ -25,6 +25,11 @@ namespace ClipLift
         /// <summary>Optional directory used in the pasted path instead of RemoteDir (e.g. a container mount).</summary>
         public string PathPrefix { get; set; } = "";
 
+        public const int DefaultKeepLast = 10;
+
+        /// <summary>Number of ClipLift uploads to keep in RemoteDir; older ones are deleted. 0 keeps all.</summary>
+        public int KeepLast { get; set; } = DefaultKeepLast;
+
         [XmlIgnore]
         public bool IsComplete => !IsBlank(Name) && !IsBlank(Host) && !IsBlank(RemoteDir);
 
@@ -75,6 +80,8 @@ namespace ClipLift
                 // Older settings used 0 for "port from ~/.ssh/config".
                 foreach (Profile p in settings.Profiles.Where(p => p.Port <= 0 || p.Port > 65535))
                     p.Port = Profile.DefaultPort;
+                foreach (Profile p in settings.Profiles.Where(p => p.KeepLast < 0))
+                    p.KeepLast = 0;
                 return settings;
             }
             catch

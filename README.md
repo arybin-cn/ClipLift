@@ -11,7 +11,7 @@ Handy for tools like Claude Code running on a remote machine: you can't paste an
 - Left-click the tray icon to upload with the last used profile.
 - Right-click to pick a profile, or to open Settings.
 
-You can set up several profiles (different hosts or directories). The original image stays in the clipboard alongside the path, so pasting into a non-terminal app still gives you the image. Image files copied in Explorer work too.
+You can set up several profiles (different hosts or directories). The original image stays in the clipboard alongside the path, so pasting into a non-terminal app still gives you the image. Image files copied in Explorer work too; they are uploaded under a `CLIPLIFT_<timestamp>` name like screenshots.
 
 ## Requirements
 
@@ -29,6 +29,7 @@ Put `ClipLift.exe` and `ClipLift.exe.config` in a folder and run it. The setting
 | Port | Leave at `22` to use whatever `~/.ssh/config` says; anything else overrides it |
 | Remote directory | Where files are uploaded, e.g. `/home/me/Images` |
 | Paste path prefix | Optional. Use it when the path seen by the remote tool differs from the upload path, e.g. inside a container |
+| Keep last | Only the newest N uploads (`CLIPLIFT_*` files) are kept in the remote directory; older ones are deleted after each upload. Default 10, `0` keeps everything |
 
 Settings are saved to `%APPDATA%\ClipLift\settings.xml`.
 
@@ -40,7 +41,7 @@ Claude Code runs in a container on `devsrv`, which mounts `/home/me/Projects` at
 - Remote directory: `/home/me/Projects/Images`
 - Paste path prefix: `/workspace/Images`
 
-After uploading, Ctrl+V in the terminal gives something like `/workspace/Images/shot_20260101_120000_000.png`.
+After uploading, Ctrl+V in the terminal gives something like `/workspace/Images/CLIPLIFT_20260101_120000_000.png`.
 
 ## Troubleshooting
 

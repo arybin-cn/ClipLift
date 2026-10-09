@@ -142,9 +142,9 @@ namespace ClipLift
                 }
 
                 SetUploading(profile);
+                int timeout = _settings.TimeoutSeconds;
                 try
                 {
-                    int timeout = _settings.TimeoutSeconds;
                     List<string> names = await Task.Run(() => Uploader.Upload(profile, payload.Files, timeout));
 
                     string text = string.Join(" ", names.Select(n => QuoteIfNeeded(profile.PastePath(n))));
@@ -158,10 +158,25 @@ namespace ClipLift
                 catch (Exception ex)
                 {
                     ShowPopup("Upload failed (" + profile.Name + ")", ex.Message, true, screen);
+                    return;
                 }
                 finally
                 {
                     SetUploading(null);
+                }
+
+                // Runs after the success popup so it does not delay it; the newest upload is never pruned.
+                if (profile.KeepLast > 0)
+                {
+                    Profile snapshot = profile.Clone();
+                    try
+                    {
+                        await Task.Run(() => Uploader.Prune(snapshot, timeout));
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowPopup("Cleanup failed (" + snapshot.Name + ")", ex.Message, true, screen);
+                    }
                 }
             }
         }

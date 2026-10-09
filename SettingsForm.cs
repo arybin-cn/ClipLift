@@ -13,7 +13,7 @@ namespace ClipLift
     /// </remarks>
     internal sealed class SettingsForm : Form
     {
-        private const string SampleFileName = "shot_20260101_120000_000.png";
+        private const string SampleFileName = "CLIPLIFT_20260101_120000_000.png";
 
         private readonly Settings _settings;
         private bool _loading;
@@ -29,6 +29,7 @@ namespace ClipLift
         private readonly NumericUpDown _port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = Profile.DefaultPort };
         private readonly TextBox _remoteDir = new TextBox();
         private readonly TextBox _pathPrefix = new TextBox();
+        private readonly NumericUpDown _keepLast = new NumericUpDown { Minimum = 0, Maximum = 10000, Value = Profile.DefaultKeepLast };
         private readonly Label _hint = new Label();
         private readonly Label _preview = new Label();
         private readonly Button _test = new Button { Text = "&Test connection" };
@@ -112,13 +113,15 @@ namespace ClipLift
             AddField(fields, "&Port:", _port);
             AddField(fields, "Remote &directory:", _remoteDir);
             AddField(fields, "Paste path &prefix:", _pathPrefix);
+            AddField(fields, "&Keep last:", _keepLast);
 
             _hint.AutoSize = true;
             _hint.ForeColor = SystemColors.GrayText;
             _hint.Text = "Host: an alias from ~/.ssh/config, or user@host. Key-based login is required.\n" +
                          "Port: keep 22 to use ~/.ssh/config as is; any other port overrides it.\n" +
                          "Paste path prefix: optional, replaces the remote directory in the pasted path " +
-                         "(e.g. the directory as mounted inside a container).";
+                         "(e.g. the directory as mounted inside a container).\n" +
+                         "Keep last: delete older uploads in the remote directory, keeping this many files. 0 keeps all.";
             _preview.AutoSize = true;
             _testStatus.AutoSize = true;
             _testStatus.Anchor = AnchorStyles.Left;
@@ -192,6 +195,7 @@ namespace ClipLift
                 foreach (Control input in new Control[] { _name, _host, _remoteDir, _pathPrefix })
                     input.Width = Px(300);
                 _port.Width = Px(80);
+                _keepLast.Width = Px(80);
                 _hint.MaximumSize = new Size(Px(420), 0);
                 _hint.Margin = new Padding(0, Px(6), 0, 0);
                 _preview.MaximumSize = new Size(Px(420), 0);
@@ -299,6 +303,7 @@ namespace ClipLift
             _port.ValueChanged += (s, e) => Edit(p => p.Port = (int)_port.Value);
             _remoteDir.TextChanged += (s, e) => Edit(p => p.RemoteDir = _remoteDir.Text);
             _pathPrefix.TextChanged += (s, e) => Edit(p => p.PathPrefix = _pathPrefix.Text);
+            _keepLast.ValueChanged += (s, e) => Edit(p => p.KeepLast = (int)_keepLast.Value);
 
             _test.Click += async (s, e) => await TestConnectionAsync();
             _save.Click += (s, e) => SaveAndClose();
@@ -325,6 +330,7 @@ namespace ClipLift
                 _port.Value = p == null || p.Port <= 0 || p.Port > 65535 ? Profile.DefaultPort : p.Port;
                 _remoteDir.Text = p?.RemoteDir ?? "";
                 _pathPrefix.Text = p?.PathPrefix ?? "";
+                _keepLast.Value = p == null || p.KeepLast < 0 ? Profile.DefaultKeepLast : Math.Min(p.KeepLast, 10000);
             }
             finally
             {
