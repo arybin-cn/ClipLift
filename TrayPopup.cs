@@ -85,11 +85,11 @@ namespace ClipLift
             }
         }
 
-        /// <summary>Shows the popup at the bottom-right of the working area of the screen under the cursor.</summary>
-        public void ShowNearTray()
+        /// <summary>Shows the popup at the bottom-right of the working area of the given screen.</summary>
+        public void ShowNearTray(Screen screen)
         {
             Size size = PreferredSize;
-            Rectangle area = Screen.FromPoint(Cursor.Position).WorkingArea;
+            Rectangle area = screen.WorkingArea;
             int gap = Ui.Px(Font, 12);
             Bounds = new Rectangle(area.Right - size.Width - gap, area.Bottom - size.Height - gap, size.Width, size.Height);
             Show();

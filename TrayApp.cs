@@ -107,6 +107,9 @@ namespace ClipLift
             if (Busy)
                 return;
 
+            // The cursor is on the tray icon or menu now; it may be on another screen when the upload ends.
+            Screen screen = Screen.FromPoint(Cursor.Position);
+
             ClipboardPayload payload;
             try
             {
@@ -114,7 +117,7 @@ namespace ClipLift
             }
             catch (Exception ex)
             {
-                ShowPopup("Cannot read clipboard", ex.Message, true);
+                ShowPopup("Cannot read clipboard", ex.Message, true, screen);
                 return;
             }
             if (payload == null)
@@ -129,11 +132,11 @@ namespace ClipLift
                     try
                     {
                         payload.PutBack(_settings.TrailingSpace ? recent.Value + " " : recent.Value, _settings.KeepImage);
-                        ShowPopup("Already uploaded to " + profile.Name, recent.Value, false);
+                        ShowPopup("Already uploaded to " + profile.Name, recent.Value, false, screen);
                     }
                     catch (Exception ex)
                     {
-                        ShowPopup("Cannot write clipboard", ex.Message, true);
+                        ShowPopup("Cannot write clipboard", ex.Message, true, screen);
                     }
                     return;
                 }
@@ -149,12 +152,12 @@ namespace ClipLift
                     _recent[profile.Name] = new KeyValuePair<string, string>(payload.Fingerprint, text);
 
                     _settings.LastProfile = profile.Name;
-                    TrySave();
-                    ShowPopup("Uploaded to " + profile.Name, text, false);
+                    TrySave(screen);
+                    ShowPopup("Uploaded to " + profile.Name, text, false, screen);
                 }
                 catch (Exception ex)
                 {
-                    ShowPopup("Upload failed (" + profile.Name + ")", ex.Message, true);
+                    ShowPopup("Upload failed (" + profile.Name + ")", ex.Message, true, screen);
                 }
                 finally
                 {
@@ -208,7 +211,7 @@ namespace ClipLift
             _tray.Text = Truncate(text, 63);
         }
 
-        private void ShowPopup(string title, string text, bool isError)
+        private void ShowPopup(string title, string text, bool isError, Screen screen = null)
         {
             _popup?.Close();
             var popup = new TrayPopup(Truncate(title, 100), Truncate(text ?? "", 400), isError,
@@ -219,10 +222,10 @@ namespace ClipLift
                     _popup = null;
             };
             _popup = popup;
-            popup.ShowNearTray();
+            popup.ShowNearTray(screen ?? Screen.FromPoint(Cursor.Position));
         }
 
-        private void TrySave()
+        private void TrySave(Screen screen = null)
         {
             try
             {
@@ -230,7 +233,7 @@ namespace ClipLift
             }
             catch (Exception ex)
             {
-                ShowPopup("Cannot save settings", ex.Message, true);
+                ShowPopup("Cannot save settings", ex.Message, true, screen);
             }
         }
 
